@@ -1,0 +1,5 @@
+vkbottle>=4.10
+python-dotenv>=1.0
+aiosqlite>=0.19
+gspread>=6.0
+google-auth>=2.29
