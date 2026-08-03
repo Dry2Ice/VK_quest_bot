@@ -40,29 +40,23 @@ GOOGLE_WORKSHEET_NAME = os.getenv("GOOGLE_WORKSHEET_NAME", "Участники")
 # --- Тексты / контент квеста ---
 PRIZE_ADDRESS = os.getenv("PRIZE_ADDRESS", "г. Москва, ул. Барклая 8, павильон 163")
 
-QR2_LOCATION_TEXT = os.getenv("QR2_LOCATION_TEXT", "[впишите адрес/описание локации 1-го QR]")
-QR2_PHOTO_ATTACHMENT = os.getenv("QR2_PHOTO_ATTACHMENT", "")  # напр. "photo-123_456"
-
-QR3_LOCATION_TEXT = os.getenv("QR3_LOCATION_TEXT", "[впишите адрес/описание локации 2-го QR]")
-QR3_PHOTO_ATTACHMENT = os.getenv("QR3_PHOTO_ATTACHMENT", "")
-
+QR2_LOCATION_TEXT = os.getenv("QR2_LOCATION_TEXT", "55.741186, 37.502687")
+CAPTCHA_PHOTO_ATTACHMENT = os.getenv("CAPTCHA_PHOTO_ATTACHMENT", "")  # напр. "photo-123_456"
 REBUS_PHOTO_ATTACHMENT = os.getenv("REBUS_PHOTO_ATTACHMENT", "")
-CONGRATS_PHOTO_ATTACHMENT = os.getenv("CONGRATS_PHOTO_ATTACHMENT", "")
-ROUTE_VIDEO_ATTACHMENT = os.getenv("ROUTE_VIDEO_ATTACHMENT", "")
 
 # --- Локальные файлы (папка media/ рядом с ботом) ---
-# Если для конкретной картинки/видео заполнена *_ATTACHMENT-строка выше —
+# Если для конкретной картинки заполнена *_ATTACHMENT-строка выше —
 # используется она (ничего заново не грузится). Если нет — бот при старте
 # сам загрузит файл с указанным именем из MEDIA_DIR в VK и закэширует
 # готовую attachment-строку в media_cache.json, чтобы не грузить повторно
 # при следующих перезапусках. См. media.py и README, раздел "Свои картинки".
 MEDIA_DIR = os.getenv("MEDIA_DIR", "media")
 
-QR2_PHOTO_FILE = os.getenv("QR2_PHOTO_FILE", "qr2.jpg")
-QR3_PHOTO_FILE = os.getenv("QR3_PHOTO_FILE", "qr3.jpg")
+CAPTCHA_PHOTO_FILE = os.getenv("CAPTCHA_PHOTO_FILE", "captcha.jpg")
 REBUS_PHOTO_FILE = os.getenv("REBUS_PHOTO_FILE", "rebus.jpg")
-CONGRATS_PHOTO_FILE = os.getenv("CONGRATS_PHOTO_FILE", "congrats.jpg")
-ROUTE_VIDEO_FILE = os.getenv("ROUTE_VIDEO_FILE", "route.mp4")
+
+# Капча после QR2: нужно прислать слова в любом порядке (регистр и "ё/е" не важны)
+CAPTCHA_WORDS = {"магазин", "кассир"}
 
 # Принимаемые варианты ответа на ребус (регистр и "ё/е" не важны)
 ACCEPTED_ANSWERS = {"зарядку", "зарядка"}

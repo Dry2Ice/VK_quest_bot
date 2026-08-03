@@ -14,25 +14,16 @@ logger = logging.getLogger("main")
 
 
 async def _resolve_media(media_lib: MediaLibrary) -> dict:
-    """Для каждой картинки/видео: если в .env явно задана attachment-строка —
+    """Для каждой картинки: если в .env явно задана attachment-строка —
     используем её как есть (ничего не грузим). Иначе пытаемся загрузить
     одноимённый файл из папки media/ (см. config.MEDIA_DIR)."""
     resolved = {}
 
-    resolved["qr2"] = config.QR2_PHOTO_ATTACHMENT or await media_lib.get_photo_attachment(
-        config.QR2_PHOTO_FILE
-    )
-    resolved["qr3"] = config.QR3_PHOTO_ATTACHMENT or await media_lib.get_photo_attachment(
-        config.QR3_PHOTO_FILE
+    resolved["captcha"] = config.CAPTCHA_PHOTO_ATTACHMENT or await media_lib.get_photo_attachment(
+        config.CAPTCHA_PHOTO_FILE
     )
     resolved["rebus"] = config.REBUS_PHOTO_ATTACHMENT or await media_lib.get_photo_attachment(
         config.REBUS_PHOTO_FILE
-    )
-    resolved["congrats"] = config.CONGRATS_PHOTO_ATTACHMENT or await media_lib.get_photo_attachment(
-        config.CONGRATS_PHOTO_FILE
-    )
-    resolved["route_video"] = config.ROUTE_VIDEO_ATTACHMENT or await media_lib.get_video_attachment(
-        config.ROUTE_VIDEO_FILE
     )
     return resolved
 

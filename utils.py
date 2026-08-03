@@ -31,5 +31,11 @@ def is_correct_answer(text: str, accepted: set) -> bool:
     return normalize_answer(text) in normalized_accepted
 
 
+def is_correct_word_sequence(text: str, expected_words: set[str]) -> bool:
+    """Проверяет, что пользователь прислал ровно нужные слова в любом порядке."""
+    words = re.findall(r"[а-яa-z0-9]+", normalize_answer(text))
+    return len(words) == len(expected_words) and set(words) == {normalize_answer(w) for w in expected_words}
+
+
 def generate_ticket_id() -> str:
     return f"КВЕСТ-{uuid.uuid4().hex[:6].upper()}"
