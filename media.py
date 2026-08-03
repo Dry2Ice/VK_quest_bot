@@ -1,27 +1,25 @@
 """
-Позволяет держать картинки/видео квеста прямо в папке бота (папка `media/`)
+Позволяет держать картинки квеста прямо в папке бота (папка `media/`)
 и не думать про attachment-строки руками.
 
 Как это работает:
-  1. При старте бота для каждого нужного файла (см. config.py, *_PHOTO_FILE /
-     ROUTE_VIDEO_FILE) вызывается get_photo_attachment()/get_video_attachment().
+  1. При старте бота для каждого нужного файла (см. config.py, *_PHOTO_FILE)
+     вызывается get_photo_attachment().
   2. Если для этого файла уже есть закэшированная attachment-строка в
      media_cache.json (и файл с тех пор не менялся — проверяем размер и
      mtime) — она переиспользуется, сеть не дёргаем.
   3. Если файла в кэше нет или он изменился — файл реально загружается в VK
-     (фото — через photos.getMessagesUploadServer, видео — через
-     video.save), а результат сохраняется в кэш.
+     через photos.getMessagesUploadServer, а результат сохраняется в кэш.
 
-Attachment-строки для сообщений (photo..., video...) не протухают сами по
-себе, поэтому одну и ту же загруженную картинку можно использовать в
-сообщениях сколько угодно раз — грузить её заново нужно только если вы
-заменили файл на диске.
+Attachment-строки для сообщений (photo...) не протухают сами по себе, поэтому
+одну и ту же загруженную картинку можно использовать в сообщениях сколько
+угодно раз — грузить её заново нужно только если вы заменили файл на диске.
 """
 import json
 import logging
 import os
 
-from vkbottle.tools import PhotoMessageUploader, VideoUploader
+from vkbottle.tools import PhotoMessageUploader
 
 logger = logging.getLogger("media")
 
@@ -33,7 +31,6 @@ class MediaLibrary:
         self.media_dir = media_dir
         self.group_id = group_id
         self._photo_uploader = PhotoMessageUploader(api)
-        self._video_uploader = VideoUploader(api)
         self._cache = self._load_cache()
 
     # ---------------------------------------------------------------- cache
@@ -75,25 +72,4 @@ class MediaLibrary:
         self._cache[key] = attachment
         self._save_cache()
         logger.info("Фото %s загружено -> %s", filename, attachment)
-        return attachment
-
-    async def get_video_attachment(self, filename: str | None) -> str | None:
-        if not filename:
-            return None
-        path = os.path.join(self.media_dir, filename)
-        if not os.path.exists(path):
-            logger.warning("Файл %s не найден в %s — сообщение уйдёт без видео", filename, self.media_dir)
-            return None
-
-        key = self._file_key(path)
-        if key in self._cache:
-            return self._cache[key]
-
-        logger.info("Загружаю видео %s в VK (это может занять время)…", filename)
-        attachment = await self._video_uploader.upload(
-            file_source=path, name=filename, group_id=self.group_id
-        )
-        self._cache[key] = attachment
-        self._save_cache()
-        logger.info("Видео %s загружено -> %s", filename, attachment)
         return attachment
