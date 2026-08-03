@@ -1,0 +1,30 @@
+# Скопируйте этот файл в .env и заполните реальными значениями.
+# .env НЕ должен попадать в git / публичный доступ — там токен сообщества.
+
+# --- VK ---
+VK_TOKEN=vk1.a.k1DIutI0rs0fNWbNIgVmxlwMI6zHlkKPDhoSCK2nqPbeADNJd8KwqMdeM7SpD_kkBc-bA81Z4ASmukigWYNk5r3HWKAU4iZ_iglu2YBnJt-0yXsvPEgoSDoGRtC2sLW3r7N7S1klogR6YZ2DlgCRVDjRBf8_8UWCYRF3vHAErMo8TuRHHrXY3Ag2TSx1XL6X735YimlhdzLVa4X78ZjgAA
+VK_GROUP_ID=233534849
+COMMUNITY_SCREEN_NAME=pro_hard_soft
+
+# --- Секретные коды чекпоинтов для QR1 / QR2 / QR3 (см. README, раздел "QR-коды") ---
+REF_CHECKPOINT_1=123
+REF_CHECKPOINT_2=234
+REF_CHECKPOINT_3=345
+
+# --- Google Sheets ---
+GOOGLE_CREDENTIALS_FILE=vkbot-504322-6976906b8aaa.json
+GOOGLE_SHEET_ID=15mZlc60dZlXOxbzKq1REauhB9gTTaK30_VfqP9fHIYI
+GOOGLE_WORKSHEET_NAME=Квест Pro Hard & Soft
+
+# --- Контент квеста ---
+PRIZE_ADDRESS=г. Москва, ул. Барклая 8, павильон 163
+
+QR2_LOCATION_TEXT=Впишите адрес/описание локации первого QR-кода
+QR2_PHOTO_ATTACHMENT=
+
+QR3_LOCATION_TEXT=Впишите адрес/описание локации второго QR-кода
+QR3_PHOTO_ATTACHMENT=
+
+REBUS_PHOTO_ATTACHMENT=
+CONGRATS_PHOTO_ATTACHMENT=
+ROUTE_VIDEO_ATTACHMENT=
