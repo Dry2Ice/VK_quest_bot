@@ -7,8 +7,8 @@
 
 Общая машина состояний:
 
-    new -> wait_name -> wait_phone -> wait_sub -> wait_qr2 -> wait_qr3
-        -> wait_answer -> done
+    new -> wait_name -> wait_phone -> wait_sub -> wait_qr2 -> wait_captcha
+        -> wait_qr3 -> wait_answer -> done
 
 Переход возможен только вперёд и только из строго определённого шага.
 Если событие (кнопка, код QR, ответ) приходит "не в свою очередь" —
@@ -24,7 +24,14 @@ import config
 import keyboards
 import texts
 from db import Database, now_iso
-from utils import generate_ticket_id, is_correct_answer, is_valid_name, is_valid_phone, normalize_answer
+from utils import (
+    generate_ticket_id,
+    is_correct_answer,
+    is_correct_word_sequence,
+    is_valid_name,
+    is_valid_phone,
+    normalize_answer,
+)
 
 logger = logging.getLogger("quest_bot")
 
@@ -33,6 +40,7 @@ STEP_WAIT_NAME = "wait_name"
 STEP_WAIT_PHONE = "wait_phone"
 STEP_WAIT_SUB = "wait_sub"
 STEP_WAIT_QR2 = "wait_qr2"
+STEP_WAIT_CAPTCHA = "wait_captcha"
 STEP_WAIT_QR3 = "wait_qr3"
 STEP_WAIT_ANSWER = "wait_answer"
 STEP_DONE = "done"
@@ -45,7 +53,7 @@ class QuestBotApp:
         self.sheets = sheets
         # Готовые attachment-строки, разрешённые один раз при старте бота
         # (см. main.py) — либо взятые напрямую из .env, либо загруженные из
-        # локальной папки media/. Ключи: qr2, qr3, rebus, congrats, route_video.
+        # локальной папки media/. Ключи: captcha, rebus.
         self.media = media or {}
         self.bot.on.message()(self.dispatch)
 
@@ -153,11 +161,10 @@ class QuestBotApp:
                 texts.REMIND_FIND_QR2.format(location=config.QR2_LOCATION_TEXT),
                 keyboard=keyboards.check_qr2_keyboard(),
             )
+        elif step == STEP_WAIT_CAPTCHA:
+            await self.handle_captcha(message, user, text)
         elif step == STEP_WAIT_QR3:
-            await message.answer(
-                texts.REMIND_FIND_QR3.format(location=config.QR3_LOCATION_TEXT),
-                keyboard=keyboards.check_qr3_keyboard(),
-            )
+            await message.answer(texts.REMIND_FIND_QR3, keyboard=keyboards.check_qr3_keyboard())
         elif step == STEP_WAIT_ANSWER:
             await self.handle_answer(message, user, text)
         elif step == STEP_DONE:
@@ -230,7 +237,6 @@ class QuestBotApp:
             # уже подписан ранее, просто напоминаем текущую локацию
             await message.answer(
                 texts.QR2_LOCATION.format(location=config.QR2_LOCATION_TEXT),
-                attachment=self.media.get("qr2"),
                 keyboard=keyboards.check_qr2_keyboard(),
             )
             return
@@ -243,28 +249,40 @@ class QuestBotApp:
         await message.answer(texts.SUBSCRIBED_OK)
         await message.answer(
             texts.QR2_LOCATION.format(location=config.QR2_LOCATION_TEXT),
-            attachment=self.media.get("qr2"),
             keyboard=keyboards.check_qr2_keyboard(),
         )
 
     async def handle_checkpoint_2(self, message: Message, user: dict):
         step = user["step"]
         if step == STEP_WAIT_QR2:
-            await self.db.update_user(user["vk_id"], qr2_at=now_iso(), step=STEP_WAIT_QR3)
+            await self.db.update_user(user["vk_id"], qr2_at=now_iso(), step=STEP_WAIT_CAPTCHA)
             await self.db.add_checkpoint(user["vk_id"], "qr2")
             user = await self.db.get_user(user["vk_id"])
             await self.sync_sheet(user)
-            await message.answer(
-                texts.QR3_LOCATION.format(location=config.QR3_LOCATION_TEXT),
-                attachment=self.media.get("qr3"),
-                keyboard=keyboards.check_qr3_keyboard(),
-            )
+            await message.answer(texts.CAPTCHA_PROMPT, attachment=self.media.get("captcha"))
         elif step in (STEP_NEW, STEP_WAIT_NAME, STEP_WAIT_PHONE, STEP_WAIT_SUB):
             await message.answer(texts.CHECKPOINT_TOO_EARLY)
             await self._resend_current_step(message, user)
         else:
             # этот чекпоинт уже пройден раньше — просто напоминаем текущее задание
             await self._resend_current_step(message, user)
+
+    async def handle_captcha(self, message: Message, user: dict, text: str):
+        correct = is_correct_word_sequence(text, config.CAPTCHA_WORDS)
+        await self.db.add_answer_attempt(user["vk_id"], text, correct)
+
+        if not correct:
+            user = await self.db.get_user(user["vk_id"])
+            await self.sync_sheet(user)
+            await message.answer(texts.WRONG_CAPTCHA, attachment=self.media.get("captcha"))
+            return
+
+        await self.db.update_user(user["vk_id"], step=STEP_WAIT_QR3)
+        await self.db.add_checkpoint(user["vk_id"], "captcha")
+        user = await self.db.get_user(user["vk_id"])
+        await self.sync_sheet(user)
+        await message.answer(texts.CAPTCHA_OK)
+        await message.answer(texts.QR3_LOCATION, keyboard=keyboards.check_qr3_keyboard())
 
     async def handle_checkpoint_3(self, message: Message, user: dict):
         step = user["step"]
@@ -274,7 +292,7 @@ class QuestBotApp:
             user = await self.db.get_user(user["vk_id"])
             await self.sync_sheet(user)
             await message.answer(texts.REBUS_PROMPT, attachment=self.media.get("rebus"))
-        elif step in (STEP_NEW, STEP_WAIT_NAME, STEP_WAIT_PHONE, STEP_WAIT_SUB, STEP_WAIT_QR2):
+        elif step in (STEP_NEW, STEP_WAIT_NAME, STEP_WAIT_PHONE, STEP_WAIT_SUB, STEP_WAIT_QR2, STEP_WAIT_CAPTCHA):
             await message.answer(texts.CHECKPOINT_TOO_EARLY)
             await self._resend_current_step(message, user)
         else:
@@ -296,12 +314,7 @@ class QuestBotApp:
         user = await self.db.get_user(user["vk_id"])
         await self.sync_sheet(user)
 
-        await message.answer(
-            texts.CONGRATS.format(ticket_id=ticket_id, address=config.PRIZE_ADDRESS),
-            attachment=self.media.get("congrats"),
-        )
-        if self.media.get("route_video"):
-            await message.answer(texts.ROUTE_VIDEO_CAPTION, attachment=self.media.get("route_video"))
+        await message.answer(texts.CONGRATS.format(ticket_id=ticket_id, address=config.PRIZE_ADDRESS))
 
     async def handle_check_qr2(self, message: Message, user: dict):
         """Кнопка "Я отсканировал QR" под сообщением с локацией QR2. Это НЕ
@@ -326,7 +339,7 @@ class QuestBotApp:
         step = user["step"]
         if step == STEP_WAIT_QR3:
             await message.answer(texts.NOT_SCANNED_QR3, keyboard=keyboards.check_qr3_keyboard())
-        elif step in (STEP_NEW, STEP_WAIT_NAME, STEP_WAIT_PHONE, STEP_WAIT_SUB, STEP_WAIT_QR2):
+        elif step in (STEP_NEW, STEP_WAIT_NAME, STEP_WAIT_PHONE, STEP_WAIT_SUB, STEP_WAIT_QR2, STEP_WAIT_CAPTCHA):
             await self._resend_current_step(message, user)
         else:
             await message.answer(texts.SCAN_CONFIRMED)
@@ -350,15 +363,12 @@ class QuestBotApp:
         elif step == STEP_WAIT_QR2:
             await message.answer(
                 texts.QR2_LOCATION.format(location=config.QR2_LOCATION_TEXT),
-                attachment=self.media.get("qr2"),
                 keyboard=keyboards.check_qr2_keyboard(),
             )
+        elif step == STEP_WAIT_CAPTCHA:
+            await message.answer(texts.CAPTCHA_REMINDER, attachment=self.media.get("captcha"))
         elif step == STEP_WAIT_QR3:
-            await message.answer(
-                texts.QR3_LOCATION.format(location=config.QR3_LOCATION_TEXT),
-                attachment=self.media.get("qr3"),
-                keyboard=keyboards.check_qr3_keyboard(),
-            )
+            await message.answer(texts.QR3_LOCATION, keyboard=keyboards.check_qr3_keyboard())
         elif step == STEP_WAIT_ANSWER:
             await message.answer(texts.REBUS_REMINDER, attachment=self.media.get("rebus"))
         elif step == STEP_DONE:
